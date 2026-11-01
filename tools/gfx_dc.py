@@ -13,7 +13,7 @@ DISC = os.path.join(ROOT, 'work', 'disc0'); OUT = os.path.join(ROOT, 'work', 'bu
 FD = r'C:\claude\utils\font'
 NG = FD + r'\nanum-gothic\NanumGothic.ttf'; NGB = FD + r'\nanum-gothic\NanumGothicBold.ttf'
 NM = FD + r'\nanum-myeongjo\NanumMyeongjo.ttf'; NMB = FD + r'\nanum-myeongjo\NanumMyeongjoBold.ttf'
-G11 = FD + r'\Galmuri-v2.40.3\Galmuri11.ttf'; G14 = FD + r'\Galmuri-v2.40.3\Galmuri14.ttf'; G11B = FD + r'\Galmuri-v2.40.3\Galmuri11-Bold.ttf'
+G9 = FD + r'\Galmuri-v2.40.3\Galmuri9.ttf'; G11 = FD + r'\Galmuri-v2.40.3\Galmuri11.ttf'; G14 = FD + r'\Galmuri-v2.40.3\Galmuri14.ttf'; G11B = FD + r'\Galmuri-v2.40.3\Galmuri11-Bold.ttf'
 
 SCREENS = {'menu': ('P03SPRI0', 0x3E00), 'opt': ('P04SPRI0', 0x3E00), 'tgt': ('P05SPRI0', 0x16500)}
 # 신 제목: 파일, 그림 시작, 한국어 이름 (일본어 고유명사 = 거센소리 규칙)
@@ -158,6 +158,24 @@ def do_scene(A, num, name):
     return B
 
 
+CLEAR = ('P03SPRI0', 0x2D600)          # 메뉴 «クリア» 세로 16×32(스테이지 깬 표시, 2026-11-01 하스피 스테이트 s6)
+
+
+def do_clear(A):
+    """16×32: 바탕 = 줄마다 한 색 그라데이션, 글자 = 빨강 0x8036 한 색 → 줄 바탕으로 지우고 «클·리·어» 갈무리11 세로"""
+    r, g, b = chans(A); red = (r - g) > 6; B = A.copy()
+    for y in range(A.shape[0]):
+        bg = collections.Counter(A[y][~red[y]].tolist()).most_common(1)[0][0]; B[y][red[y]] = bg
+    col = collections.Counter(A[red].tolist()).most_common(1)[0][0]
+    slots = [(0, 9), (11, 20), (22, 31)]                                   # 32줄을 세 칸(갈무리11 제 크기 = 10줄)
+    for (y0, y1), ch in zip(slots, '클리어'):
+        a = render(ch, G11, 11, aa=False)
+        assert a.shape[0] <= y1 - y0 + 1 and a.shape[1] <= 16, (ch, a.shape)
+        y = y0 + (y1 - y0 + 1 - a.shape[0]) // 2; x = (16 - a.shape[1]) // 2
+        reg = B[y:y + a.shape[0], x:x + a.shape[1]]; reg[a > 0] = col
+    return B
+
+
 def main():
     os.makedirs(OUT, exist_ok=True); os.makedirs(IMG, exist_ok=True)
     bufs = {}
@@ -169,6 +187,9 @@ def main():
         d = buf(f); A = load(d, o, 320, 224)
         B = do_menu(A) if key == 'menu' else do_tgt(A)[0] if key == 'tgt' else do_opt(A)
         d[o:o + 320 * 224 * 2] = B.astype('>u2').tobytes(); prev.append((key, A, B))
+    d = buf(CLEAR[0]); A = load(d, CLEAR[1], 16, 32); B = do_clear(A)
+    d[CLEAR[1]:CLEAR[1] + 16 * 32 * 2] = B.astype('>u2').tobytes()
+    Image.fromarray(np.concatenate([rgb8(A), np.full((32, 2, 3), 255, np.uint8), rgb8(B)], 1)).resize((34 * 8, 32 * 8), Image.NEAREST).save(os.path.join(IMG, 'prev_clear.png'))
     for f, o, n, nm in SCENES:
         d = buf(f); A = load(d, o, 160, 12); B = do_scene(A, n, nm)
         d[o:o + 160 * 12 * 2] = B.astype('>u2').tobytes(); prev.append(('scene' + n, A, B))

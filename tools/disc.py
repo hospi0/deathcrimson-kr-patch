@@ -7,7 +7,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NAMES = ['Death Crimson (Japan)']
 
 
-ROMS = r'C:\claude\roms\ss\Death Crimson (Japan)'      # 원본(읽기만)
+ROMS = r'D:\hospi\My Documents\한글패치\SS\ss\Death Crimson (Japan)'      # 원본(읽기만)
 
 
 def bin_path(n): return os.path.join(ROMS, NAMES[n] + ' (Track 1).bin')
